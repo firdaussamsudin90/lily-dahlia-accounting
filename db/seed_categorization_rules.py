@@ -217,7 +217,7 @@ def seed_if_empty(conn):
     module never has to import modules.db itself — that would form a circular
     import (modules.db -> db.seed_categorization_rules -> modules.db) which
     Streamlit's local-module reload watcher chases into runaway recursion."""
-    count = conn.execute("SELECT COUNT(*) FROM categorization_rules").fetchone()[0]
+    count = conn.execute("SELECT COUNT(*) AS count FROM categorization_rules").fetchone()["count"]
     if count == 0:
         conn.executemany(
             """INSERT INTO categorization_rules

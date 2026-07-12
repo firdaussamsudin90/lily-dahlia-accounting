@@ -144,9 +144,12 @@ if uploaded_pdf is not None:
             ).fetchall()]
             if old_ids:
                 q = ",".join("%s" for _ in old_ids)
+                # Order matters: vouchers/transactions reference documents, so both must be
+                # cleared before documents are deleted, or the FK constraint on
+                # transactions.document_id rejects the delete.
                 conn.execute(f"DELETE FROM vouchers WHERE transaction_id IN ({q})", old_ids)
-                conn.execute(f"DELETE FROM documents WHERE linked_transaction_id IN ({q})", old_ids)
                 conn.execute(f"DELETE FROM transactions WHERE id IN ({q})", old_ids)
+                conn.execute(f"DELETE FROM documents WHERE linked_transaction_id IN ({q})", old_ids)
             conn.execute("DELETE FROM bank_statements WHERE month = %s", (month_str,))
 
         storage_path = f"statements/{month_str}/{uploaded_pdf.name}"
