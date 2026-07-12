@@ -11,10 +11,19 @@ Two extraction strategies are tried, in order:
 2. Text-line fallback: scans raw text for date-prefixed lines and trailing
    money amounts, and infers debit vs. credit by checking whether adding or
    subtracting the transaction amount from the running balance reproduces the
-   printed balance on that line. In this path the counterparty/note split is
-   not attempted (the whole description is put in `note`, counterparty left
-   blank) since without column positions that split can't be done reliably —
-   the review screen in the app lets the owner fix these by hand.
+   printed balance on that line. Without real table columns, counterparty and
+   note are both embedded in one blob of text; TRANSACTION_PREFIX_RE strips
+   the leading transaction-type phrase Maybank statements use (e.g.
+   "TRANSFER FR A/C -", "INTER-BANK PAYMENT INTO A/C +"), and the counterparty
+   name is taken as the text up to the next '*' marker, which Maybank always
+   prints right after it. Page-footer legal boilerplate ("BAKI LEGAR...",
+   "PROTECTED BY PIDM...") that sometimes gets merged into a transaction's
+   wrapped note (or occasionally misparsed as its own bogus "transaction",
+   when a date-like fragment in the footer text starts its own line) is
+   stripped via FOOTER_RE; a "transaction" left with no note and no amounts
+   afterwards is footer noise and is dropped. None of this is guaranteed to
+   fit every Maybank statement layout — the review screen in the app lets the
+   owner fix any row this gets wrong before saving.
 
 Every parsed row is a dict: date (ISO), counterparty, note, debit, credit,
 running_balance, source_line (for debugging/review).
@@ -37,6 +46,52 @@ HEADER_KEYWORDS = {
 
 OPENING_KEYWORDS = ["opening balance", "balance b/f", "beginning balance", "baki bawa ke hadapan"]
 CLOSING_KEYWORDS = ["closing balance", "balance c/f", "ending balance", "baki bawa ke hadapan berikut"]
+
+# Leading transaction-type phrase Maybank statements print before the
+# counterparty name, observed across "TRANSFER FR/TO A/C", "PAYMENT FR/TO
+# A/C", "INTER-BANK PAYMENT INTO/FROM A/C", "ELECTRONIC REMITTANCE - GIR -",
+# "CMS - CR PYMT MARS +", "ESI PAYMENT DEBIT .NN-" style statement lines.
+TRANSACTION_PREFIX_RE = re.compile(
+    r"^(?:"
+    r"TRANSFER (?:FR|TO) A/C\s*[-+]|"
+    r"PAYMENT (?:FR|TO) A/C\s*[-+]|"
+    r"INTER-BANK (?:PAYMENT (?:INTO|FROM)|GIRO PAYMENT)\s*A/C\s*[-+]|"
+    r"ELECTRONIC REMITTANCE\s*-\s*GIR\s*-|"
+    r"CMS\s*-\s*CR PYMT MARS\s*\+|"
+    r"ESI PAYMENT DEBIT\s*\.?\d*\s*-"
+    r")\s*",
+    re.IGNORECASE,
+)
+
+# Recurring page-footer legal/disclaimer boilerplate that can get merged into
+# a transaction's note (wrapped continuation lines) or, rarely, misparsed as
+# its own bogus transaction when a date-like fragment inside it starts a line.
+FOOTER_MARKERS = [
+    "BAKI LEGAR", "PROTECTED BY PIDM", "Maybank Islamic Berhad", "TARIKH PENYATA",
+    "Semua maklumat dan baki", "IBS KOTA KEMUNING", "Overdrawn balances",
+]
+FOOTER_RE = re.compile("|".join(re.escape(m) for m in FOOTER_MARKERS), re.IGNORECASE)
+
+
+def _split_counterparty_from_blob(text):
+    """Splits a Maybank statement line's combined description into
+    (counterparty, note), or (None, cleaned_text) if no known transaction-type
+    prefix is recognized (caller decides what to do with that case)."""
+    if not text:
+        return None, text
+
+    m = FOOTER_RE.search(text)
+    if m:
+        text = text[: m.start()].strip()
+
+    stripped = TRANSACTION_PREFIX_RE.sub("", text, count=1)
+    if stripped == text:
+        return None, text  # no recognized prefix; leave whole thing as note
+
+    if "*" in stripped:
+        counterparty, _, note = stripped.partition("*")
+        return counterparty.strip() or None, note.strip() or None
+    return None, stripped.strip() or None
 
 
 def _to_float(text):
@@ -167,6 +222,20 @@ def _parse_via_text(pdf):
             pending["source_line"] += " | " + line
     if pending:
         transactions.append(pending)
+
+    # Split each transaction's combined description into counterparty/note, and
+    # drop entries that turn out to be pure page-footer noise (no note content
+    # left after stripping boilerplate, and no amounts were ever found either —
+    # a real transaction always has at least an amount and a balance).
+    split_transactions = []
+    for t in transactions:
+        counterparty, note = _split_counterparty_from_blob(t["note"])
+        if not note and not t["amounts"]:
+            continue
+        t["counterparty"] = counterparty
+        t["note"] = note
+        split_transactions.append(t)
+    transactions = split_transactions
 
     # Resolve debit/credit/balance from trailing amounts using the running-balance heuristic.
     resolved = []

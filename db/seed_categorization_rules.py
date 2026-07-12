@@ -22,15 +22,17 @@ specific rules are listed before broader/generic ones so they aren't shadowed.
 # (match_pattern, match_field, category, subcategory, default_flag, needs_document, notes)
 RULES = [
     # --- Revenue (settlement platforms) — no document expected ---
-    ("Moneymatch", "counterparty", "Revenue", "TikTok Shop Settlement (Net)", None, False,
+    ("Moneymatch", "either", "Revenue", "TikTok Shop Settlement (Net)", None, False,
      "MoneyMatch inflows - net of TikTok commission/fees, NOT gross sales."),
-    ("Pipo (My)", "counterparty", "Revenue", "TikTok Shop Settlement (Net)", None, False,
+    ("Pipo (My)", "either", "Revenue", "TikTok Shop Settlement (Net)", None, False,
      "Second TikTok Shop settlement channel confirmed Apr 2026, runs parallel to MoneyMatch."),
-    ("Airpay", "counterparty", "Revenue", "Shopee Settlement (Net)", None, False,
-     "Airpay inflows - net of Shopee commission/fees, NOT gross sales."),
-    ("Billplz", "counterparty", "Revenue", "Website Settlement - FPX", None, False,
-     "FPX/online banking checkout on the Demiglow website."),
-    ("Stripe", "counterparty", "Revenue", "Website Settlement - Credit Card", None, False,
+    ("Airpay", "either", "Revenue", "Shopee Settlement (Net)", None, False,
+     "Airpay inflows - net of Shopee commission/fees, NOT gross sales. Some statement lines "
+     "don't print a '*' marker after this name, so counterparty doesn't always get split out."),
+    ("Billplz", "either", "Revenue", "Website Settlement - FPX", None, False,
+     "FPX/online banking checkout on the Demiglow website. Some statement lines don't print a "
+     "'*' marker after this name, so counterparty doesn't always get split out."),
+    ("Stripe", "either", "Revenue", "Website Settlement - Credit Card", None, False,
      "Credit card checkout on the Demiglow website."),
     ("DMS A3", "note", "Revenue", "Website Settlement - Credit Card", None, False,
      "Credit card checkout settlement label."),
@@ -150,7 +152,7 @@ RULES = [
      "TNB abbreviation for Tenaga Nasional Berhad electricity bill."),
     ("Pengurusan Air", "either", "Operating Expenses", "Water Bill (Business)", "yellow", True,
      "Confirmed Oct 2025: genuine utility (water) bill."),
-    ("Indah Water Konsortium", "either", "Operating Expenses", "Water Bill (Business)", "yellow", True,
+    ("Indah Water Konsorti", "either", "Operating Expenses", "Water Bill (Business)", "yellow", True,
      "Sewerage/water utility bill, same treatment as Pengurusan Air Selangor."),
     ("Atma Shopify", "note", "Personal/Non-business", "Other Business/Personal Use", None, False,
      "Confirmed Jul 2025: payment for a separate, non-Demiglow business - recurring monthly pattern."),
@@ -205,7 +207,7 @@ RULES = [
      "of whether purpose is known."),
 
     # --- Personal/Non-business — no document required ---
-    ("Lembaga Zakat Selangor", "either", "Personal/Non-business", "Zakat (Selangor)", None, False, None),
+    ("Lembaga Zakat Selang", "either", "Personal/Non-business", "Zakat (Selangor)", None, False, None),
 
     # --- Admin & Bank — no document required ---
     ("Visa Card", "note", "Admin & Bank", "Credit Card Payment", None, False, "Maybank Visa Card settlement."),
