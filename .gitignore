@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+
+# real financial data — reference-only, never pushed to GitHub
+Lily_Dahlia_Enterprise_Ledger_2026.xlsx
+
+# local-only artifacts from the old SQLite/local-disk prototype
+ledger.db
+documents/
+vouchers/
+
+# real secrets — never commit; see .streamlit/secrets.toml.example
+.streamlit/secrets.toml
