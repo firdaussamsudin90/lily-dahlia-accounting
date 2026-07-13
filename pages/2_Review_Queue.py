@@ -1,8 +1,10 @@
-import pandas as pd
+import calendar
+from collections import defaultdict
+
 import streamlit as st
 
-from modules.db import get_connection, init_db
 from modules.auth import require_login
+from modules.db import get_connection, init_db
 
 st.set_page_config(page_title="Review Queue", page_icon="🔎", layout="wide")
 init_db()
@@ -19,23 +21,17 @@ CATEGORIES = [
 ]
 FLAGS = [None, "yellow", "red"]
 
-conn = get_connection()
-rows = conn.execute(
-    """SELECT * FROM transactions
-       WHERE category IS NULL OR flag_color = 'red'
-       ORDER BY date ASC"""
-).fetchall()
-conn.close()
 
-if not rows:
-    st.success("Nothing to review — every transaction is categorized and no red flags are outstanding.")
-    st.stop()
+def month_label(month_str):
+    year, month_num = month_str.split("-")
+    return f"{calendar.month_name[int(month_num)]} {year}"
 
-st.write(f"**{len(rows)}** transaction(s) need attention.")
 
-for r in rows:
-    r = dict(r)
-    label = f"{r['date']} — {r['counterparty'] or '(no counterparty)'} — RM{(r['debit'] or r['credit'] or 0):,.2f}"
+def render_review_row(r):
+    label = (
+        f"{r['date']} — {r['counterparty'] or '(no counterparty)'} — "
+        f"RM{(r['debit'] or r['credit'] or 0):,.2f}"
+    )
     with st.expander(label):
         c1, c2 = st.columns(2)
         c1.write(f"**Note:** {r['note'] or '—'}")
@@ -50,7 +46,8 @@ for r in rows:
             )
             subcategory = st.text_input("Subcategory", value=r["subcategory"] or "", key=f"sub_{r['id']}")
             flag = st.selectbox(
-                "Flag", options=FLAGS, index=FLAGS.index(r["flag_color"]) if r["flag_color"] in FLAGS else 0,
+                "Flag", options=FLAGS,
+                index=FLAGS.index(r["flag_color"]) if r["flag_color"] in FLAGS else 0,
                 format_func=lambda f: f or "none", key=f"flag_{r['id']}",
             )
             flag_note = st.text_input("Flag note", value=r["flag_note"] or "", key=f"flagnote_{r['id']}")
@@ -64,9 +61,36 @@ for r in rows:
                     """UPDATE transactions
                        SET category=%s, subcategory=%s, flag_color=%s, flag_note=%s, needs_document=%s
                        WHERE id=%s""",
-                    (category, subcategory or None, flag, flag_note or None, bool(needs_document), r["id"]),
+                    (category, subcategory or None, flag, flag_note or None,
+                     bool(needs_document), r["id"]),
                 )
                 conn.commit()
                 conn.close()
                 st.success("Saved.")
                 st.rerun()
+
+
+conn = get_connection()
+rows = conn.execute(
+    """SELECT * FROM transactions
+       WHERE category IS NULL OR flag_color = 'red'
+       ORDER BY month DESC, date ASC"""
+).fetchall()
+conn.close()
+
+if not rows:
+    st.success("Nothing to review — every transaction is categorized and no red flags are outstanding.")
+    st.stop()
+
+st.write(f"**{len(rows)}** transaction(s) need attention.")
+
+by_month = defaultdict(list)
+for r in rows:
+    by_month[r["month"]].append(dict(r))
+
+months = sorted(by_month.keys(), reverse=True)
+tabs = st.tabs([f"{month_label(m)} ({len(by_month[m])})" for m in months])
+for tab, month in zip(tabs, months):
+    with tab:
+        for r in by_month[month]:
+            render_review_row(r)

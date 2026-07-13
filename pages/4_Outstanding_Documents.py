@@ -1,7 +1,10 @@
+import calendar
+from collections import defaultdict
+
 import streamlit as st
 
-from modules.db import init_db
 from modules.auth import require_login
+from modules.db import init_db
 from modules.outstanding_documents import attach_document, get_outstanding
 from modules.storage import download_bytes
 
@@ -15,17 +18,15 @@ st.caption(
     "item and auto-generates its Payment/Claim Voucher."
 )
 
-outstanding = get_outstanding()
-
-if not outstanding:
-    st.success("Nothing outstanding — every document-requiring transaction has a document attached.")
-    st.stop()
-
-st.write(f"**{len(outstanding)}** transaction(s) outstanding.")
-
 DOCUMENT_TYPES = ["invoice", "receipt", "ad_confirmation", "other"]
 
-for txn in outstanding:
+
+def month_label(month_str):
+    year, month_num = month_str.split("-")
+    return f"{calendar.month_name[int(month_num)]} {year}"
+
+
+def render_outstanding_row(txn):
     amount = txn["debit"] if txn["debit"] else txn["credit"]
     label = (
         f"{txn['date']} — {txn['counterparty'] or '(no counterparty)'} — RM{amount:,.2f} — "
@@ -90,3 +91,23 @@ for txn in outstanding:
                         "Download voucher PDF", download_bytes(voucher_storage_path),
                         file_name=f"{voucher_number}.pdf", mime="application/pdf", key=f"dl_{txn['id']}",
                     )
+
+
+outstanding = get_outstanding()
+
+if not outstanding:
+    st.success("Nothing outstanding — every document-requiring transaction has a document attached.")
+    st.stop()
+
+st.write(f"**{len(outstanding)}** transaction(s) outstanding.")
+
+by_month = defaultdict(list)
+for txn in outstanding:
+    by_month[txn["month"]].append(txn)
+
+months = sorted(by_month.keys(), reverse=True)
+tabs = st.tabs([f"{month_label(m)} ({len(by_month[m])})" for m in months])
+for tab, month in zip(tabs, months):
+    with tab:
+        for txn in by_month[month]:
+            render_outstanding_row(txn)
