@@ -27,7 +27,7 @@ def require_login():
     if st.session_state.get("authenticated"):
         return
 
-    st.title("🌸 Lily Dahlia Enterprise — Accounting")
+    st.title("🧾 Lily Dahlia Enterprise — Accounting")
     entered = st.text_input("Password", type="password")
     if st.button("Log in") or entered:
         if entered == password:

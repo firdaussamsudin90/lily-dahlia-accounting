@@ -3,12 +3,12 @@ import streamlit as st
 from modules.auth import require_login
 from modules.db import get_connection, init_db
 
-st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🌸", layout="wide")
+st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🧾", layout="wide")
 
 init_db()
 require_login()
 
-st.title("🌸 Lily Dahlia Enterprise / Demiglow — Accounting")
+st.title("🧾 Lily Dahlia Enterprise / Demiglow — Accounting")
 st.caption("Phase 1: bank statement processing, categorization, outstanding documents, vouchers, payroll register.")
 
 conn = get_connection()
