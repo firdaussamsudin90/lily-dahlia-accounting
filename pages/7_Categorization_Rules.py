@@ -21,7 +21,7 @@ rows = conn.execute("SELECT * FROM categorization_rules ORDER BY id ASC").fetcha
 conn.close()
 
 df = pd.DataFrame([dict(r) for r in rows])
-st.dataframe(df, use_container_width=True, height=600)
+st.dataframe(df, width="stretch", height=600)
 
 st.divider()
 st.subheader("Add a new rule")

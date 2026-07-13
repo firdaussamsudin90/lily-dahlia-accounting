@@ -91,7 +91,7 @@ if uploaded_pdf is not None:
     edited_df = st.data_editor(
         df,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "date": st.column_config.TextColumn("Date"),
             "counterparty": st.column_config.TextColumn("Counterparty"),
@@ -117,7 +117,7 @@ if uploaded_pdf is not None:
         for e in result["errors"]:
             st.write("- " + e)
         if result["row_errors"]:
-            st.dataframe(pd.DataFrame(result["row_errors"]), use_container_width=True)
+            st.dataframe(pd.DataFrame(result["row_errors"]), width="stretch")
         st.stop()
 
     st.success("✅ Balance chain reconciles: opening balance → every transaction → closing balance, exactly.")
@@ -127,7 +127,7 @@ if uploaded_pdf is not None:
     preview_df = pd.DataFrame(categorized)[
         ["date", "counterparty", "note", "debit", "credit", "category", "subcategory", "flag_color"]
     ]
-    st.dataframe(preview_df, use_container_width=True)
+    st.dataframe(preview_df, width="stretch")
 
     n_uncategorized = sum(1 for t in categorized if t["category"] is None)
     n_red = sum(1 for t in categorized if t["flag_color"] == "red")

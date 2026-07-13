@@ -40,7 +40,7 @@ if not lines:
 df = pd.DataFrame(lines)[["person_name", "role", "amount", "notes"]]
 df.columns = ["Person", "Role", "Amount (RM)", "Notes"]
 
-st.dataframe(df, use_container_width=True)
+st.dataframe(df, width="stretch")
 
 total = df["Amount (RM)"].sum()
 st.metric("Total payroll this month (RM)", f"{total:,.2f}")

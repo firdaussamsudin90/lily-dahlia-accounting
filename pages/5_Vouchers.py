@@ -23,13 +23,18 @@ if not rows:
     st.stop()
 
 df = pd.DataFrame([dict(r) for r in rows])
+# Postgres NUMERIC columns come back as decimal.Decimal via psycopg2 — convert to
+# float before this DataFrame goes anywhere near st.dataframe()/Arrow, since mixing
+# Decimal into a pyarrow-backed pandas DataFrame can crash the process outright.
+for col in ["debit", "credit"]:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 type_filter = st.multiselect("Voucher type", options=["payment", "claim"], default=["payment", "claim"])
 df = df[df["voucher_type"].isin(type_filter)]
 
 st.dataframe(
     df[["voucher_number", "voucher_type", "txn_date", "counterparty", "note", "debit", "credit",
         "category", "subcategory", "prepared_by", "approved_by", "date_generated"]],
-    use_container_width=True, height=500,
+    width="stretch", height=500,
 )
 
 st.divider()

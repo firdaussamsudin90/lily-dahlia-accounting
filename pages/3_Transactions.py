@@ -49,6 +49,12 @@ if df.empty:
     st.info("No transactions match this filter.")
     st.stop()
 
+# Postgres NUMERIC columns come back as decimal.Decimal via psycopg2 — convert to
+# float before this DataFrame goes anywhere near st.dataframe()/Arrow, since mixing
+# Decimal into a pyarrow-backed pandas DataFrame can crash the process outright.
+for col in ["debit", "credit", "running_balance"]:
+    df[col] = pd.to_numeric(df[col], errors="coerce")
+
 total_debit = df["debit"].fillna(0).sum()
 total_credit = df["credit"].fillna(0).sum()
 m1, m2, m3 = st.columns(3)
@@ -60,7 +66,7 @@ display_cols = [
     "id", "date", "counterparty", "note", "debit", "credit", "running_balance",
     "category", "subcategory", "flag_color", "needs_document", "document_id",
 ]
-st.dataframe(df[display_cols], use_container_width=True, height=600)
+st.dataframe(df[display_cols], width="stretch", height=600)
 
 st.divider()
 st.subheader("Edit a transaction")
