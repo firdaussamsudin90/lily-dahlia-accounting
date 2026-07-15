@@ -3,6 +3,9 @@ import streamlit as st
 
 from modules.db import get_connection, init_db
 from modules.auth import require_login
+from modules.storage import download_bytes
+
+IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 init_db()
 require_login()
@@ -78,6 +81,29 @@ if edit_id:
         st.warning("No transaction with that ID.")
     else:
         row = dict(row)
+
+        if row["document_id"]:
+            doc_conn = get_connection()
+            doc = doc_conn.execute("SELECT * FROM documents WHERE id = %s", (row["document_id"],)).fetchone()
+            doc_conn.close()
+            if doc:
+                doc = dict(doc)
+                st.markdown(
+                    f"**Attached document:** {doc['filename'] or '(manual reference)'}"
+                    + (f" — _{doc['caption']}_" if doc["caption"] else "")
+                )
+                if doc["storage_path"]:
+                    doc_bytes = download_bytes(doc["storage_path"])
+                    ext = (doc["filename"] or "").rsplit(".", 1)[-1].lower()
+                    if ext in IMAGE_EXTS:
+                        st.image(doc_bytes, width=250)
+                    st.download_button(
+                        "Download attached document", doc_bytes,
+                        file_name=doc["filename"] or f"document_{doc['id']}", key=f"dl_doc_{doc['id']}",
+                    )
+                else:
+                    st.caption(f"Manual reference: {doc['notes'] or '(no notes)'}")
+
         with st.form("edit_txn"):
             c1, c2 = st.columns(2)
             category = c1.text_input("Category", value=row["category"] or "")

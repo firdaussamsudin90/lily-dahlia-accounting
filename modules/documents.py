@@ -27,11 +27,23 @@ def _link_and_maybe_generate_voucher(conn, document_id, transaction_id, prepared
     if txn is None:
         return None, None
     txn = dict(txn)
-    if not (txn["needs_document"] and txn["document_id"] is None):
-        return None, None  # already has a document, or this category doesn't need one — just link, no voucher
+    if txn["document_id"] is not None:
+        return None, None  # already has a document — don't overwrite the existing link
 
+    # Always link the document to the transaction once matched, regardless of
+    # whether this category formally "needs" one — otherwise a document
+    # matched to a needs_document=False transaction (e.g. Revenue, Staff
+    # Cost) never gets its transactions.document_id set, and becomes
+    # unreachable: it won't show in Outstanding Documents (never listed
+    # there), won't show in Pending Review (it has a confident match, so
+    # nothing flags it), and no voucher gets generated to find it via
+    # Vouchers either. It just vanishes.
     conn.execute("UPDATE transactions SET document_id = %s WHERE id = %s", (document_id, transaction_id))
     conn.commit()
+
+    if not txn["needs_document"]:
+        return None, None  # linked, but this category doesn't need a voucher
+
     return generate_voucher(
         transaction_id=transaction_id,
         voucher_type=_default_voucher_type(txn),

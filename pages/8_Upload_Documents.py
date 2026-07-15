@@ -149,6 +149,8 @@ with tab_whatsapp:
                 conn.close()
             st.session_state["wa_parsed"] = in_month
             st.session_state["wa_month_str"] = f"{wa_year:04d}-{wa_month_num:02d}"
+            st.session_state["wa_total_found"] = len(parsed)
+            st.session_state["wa_missing_media"] = sum(1 for m in parsed if m["media_bytes"] is None)
         except ValueError as e:
             st.error(str(e))
 
@@ -158,9 +160,29 @@ with tab_whatsapp:
         month_label = f"{calendar.month_name[int(month_str[5:])]} {month_str[:4]}"
 
         if not parsed_items:
-            st.info(f"No media messages found for {month_label} in this export.")
+            total_found = st.session_state.get("wa_total_found", 0)
+            if total_found == 0:
+                st.warning(
+                    "No media messages were recognized anywhere in this export, not just this month — "
+                    "the chat log's format probably isn't matching the parser (e.g. a WhatsApp export "
+                    "variant this app doesn't handle yet). Double-check the .txt file is the real "
+                    "`_chat.txt`, and if this keeps happening, share a couple of anonymized sample lines "
+                    "from it so the parser can be fixed to match your export's exact format."
+                )
+            else:
+                st.info(
+                    f"Found {total_found} media message(s) elsewhere in the export, but none in "
+                    f"{month_label} — try a different month, or double check the year."
+                )
         else:
             st.write(f"**{len(parsed_items)}** receipt/media message(s) found for {month_label}. Review before saving.")
+            missing = sum(1 for m in parsed_items if m["media_bytes"] is None)
+            if missing:
+                st.warning(
+                    f"{missing} of these reference a media file that isn't in your upload (name mismatch, "
+                    "or it wasn't selected/included in the zip) — those rows are unchecked by default "
+                    "and won't be saved unless you re-upload the matching file."
+                )
 
             conn = get_connection()
             txn_rows = [dict(r) for r in conn.execute(
