@@ -5,30 +5,32 @@ import streamlit as st
 from modules.auth import require_login
 from modules.db import get_connection, init_db
 from modules.icons import icon
-from modules.theme import FOREST, TEXT_MUTED, TEXT_SECONDARY, html, inject_theme
+from modules.theme import TEXT_MUTED, TEXT_SECONDARY, html, inject_theme
 
 st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🧾", layout="wide")
 inject_theme()
 init_db()
 require_login()
 
-# ---------------------------------------------------------------- page map --
+# Material Symbols names (Streamlit's built-in outline icon set) — used only for
+# the sidebar nav, since it must render inside a real, reliably-clickable
+# st.button rather than the custom SVG overlay used everywhere else on the page.
 PAGES = {
     "OVERVIEW": [
-        ("pages/0_Dashboard.py", "Dashboard", "grid", True),
+        ("pages/0_Dashboard.py", "Dashboard", "grid_view", True),
     ],
     "DATA ENTRY": [
         ("pages/1_Upload_Statement.py", "Upload Statement", "upload", False),
-        ("pages/8_Upload_Documents.py", "Upload Documents", "file-plus", False),
+        ("pages/8_Upload_Documents.py", "Upload Documents", "note_add", False),
     ],
     "RECONCILIATION": [
         ("pages/2_Review_Queue.py", "Review Queue", "search", False),
-        ("pages/4_Outstanding_Documents.py", "Outstanding Documents", "paperclip", False),
+        ("pages/4_Outstanding_Documents.py", "Outstanding Documents", "attach_file", False),
     ],
     "RECORDS": [
-        ("pages/3_Transactions.py", "Transactions", "list", False),
-        ("pages/5_Vouchers.py", "Vouchers", "file-text", False),
-        ("pages/6_Payroll_Register.py", "Payroll Register", "users", False),
+        ("pages/3_Transactions.py", "Transactions", "receipt_long", False),
+        ("pages/5_Vouchers.py", "Vouchers", "description", False),
+        ("pages/6_Payroll_Register.py", "Payroll Register", "group", False),
     ],
     "SETTINGS": [
         ("pages/7_Categorization_Rules.py", "Categorization Rules", "settings", False),
@@ -57,22 +59,12 @@ def slug(text):
     return re.sub(r"[^a-zA-Z0-9]", "_", text)
 
 
-def nav_row(page, icon_name, badge_count, active):
-    row_key = f"navrow_{slug(page.title)}"
-    badge_html = f'<span class="dg-badge">{badge_count}</span>' if badge_count else ""
-    icon_color = FOREST if active else TEXT_SECONDARY
+def nav_row(page, material_icon, badge_count, active):
+    label = f"{page.title}   ·  {badge_count}" if badge_count else page.title
+    key_prefix = "navactive" if active else "navrow"
+    row_key = f"{key_prefix}_{slug(page.title)}"
     with st.container(key=row_key):
-        st.markdown(
-            html(f"""
-            <div class="dg-nav-row-overlay {'active' if active else ''}">
-                <span class="dg-icon-square dg-nav-icon">{icon(icon_name, size=17, color=icon_color)}</span>
-                <span class="dg-nav-label">{page.title}</span>
-                {badge_html}
-            </div>
-            """),
-            unsafe_allow_html=True,
-        )
-        if st.button("", key=f"btn_{row_key}", use_container_width=True):
+        if st.button(label, icon=f":material/{material_icon}:", key=f"btn_{row_key}", use_container_width=True):
             st.switch_page(page)
 
 
@@ -80,7 +72,7 @@ with st.sidebar:
     st.markdown(
         html(f"""
         <div class="dg-sidebar-logo">
-            <span class="dg-icon-square" style="background:{FOREST};">{icon("sparkle", size=18, color="#fff")}</span>
+            <span class="dg-icon-square" style="background:#1F4D3C;">{icon("sparkle", size=18, color="#fff")}</span>
             <div>
                 <div style="font-weight:800;font-size:1.05rem;color:#15171A;line-height:1.1;">Demiglow</div>
                 <div style="font-size:0.72rem;color:{TEXT_MUTED};">Lily Dahlia Enterprise</div>
@@ -92,36 +84,19 @@ with st.sidebar:
 
     for section, items in PAGES.items():
         st.markdown(f'<div class="dg-sidebar-section">{section}</div>', unsafe_allow_html=True)
-        for page_obj, (path, title, icon_name, _default) in zip(st_pages[section], items):
-            nav_row(page_obj, icon_name, BADGES.get(title), active=(nav.title == title))
+        for page_obj, (path, title, material_icon, _default) in zip(st_pages[section], items):
+            nav_row(page_obj, material_icon, BADGES.get(title), active=(nav.title == title))
 
     st.markdown('<div class="dg-sidebar-section">GENERAL</div>', unsafe_allow_html=True)
     settings_page = st_pages["SETTINGS"][0]
     with st.container(key="navrow_general_settings"):
-        st.markdown(
-            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("settings", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Settings</span></div>"""),
-            unsafe_allow_html=True,
-        )
-        if st.button("", key="btn_general_settings", use_container_width=True):
+        if st.button("Settings", icon=":material/settings:", key="btn_general_settings", use_container_width=True):
             st.switch_page(settings_page)
     with st.container(key="navrow_general_help"):
-        st.markdown(
-            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("help-circle", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Help</span></div>"""),
-            unsafe_allow_html=True,
-        )
-        if st.button("", key="btn_general_help", use_container_width=True):
-            st.toast(
-                "Need a hand? Ping Firdaus, or check Getting_Started_Guide.md in the repo.", icon="💬"
-            )
+        if st.button("Help", icon=":material/help:", key="btn_general_help", use_container_width=True):
+            st.toast("Need a hand? Ping Firdaus, or check Getting_Started_Guide.md in the repo.", icon="💬")
     with st.container(key="navrow_general_logout"):
-        st.markdown(
-            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("log-out", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Logout</span></div>"""),
-            unsafe_allow_html=True,
-        )
-        if st.button("", key="btn_general_logout", use_container_width=True):
+        if st.button("Logout", icon=":material/logout:", key="btn_general_logout", use_container_width=True):
             st.session_state["authenticated"] = False
             st.rerun()
 

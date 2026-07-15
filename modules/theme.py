@@ -44,9 +44,7 @@ def inject_theme():
         html, body, [data-testid="stAppViewContainer"] {{
             background: {BG};
         }}
-        [data-testid="stHeader"] {{
-            background: {BG};
-        }}
+        [data-testid="stHeader"] {{ display: none; }}
         [data-testid="stMainBlockContainer"], .block-container {{
             padding-top: 1.2rem;
             max-width: 1200px;
@@ -170,36 +168,24 @@ def inject_theme():
             font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
             color: {TEXT_MUTED}; margin: 14px 10px 6px 10px;
         }}
-        .dg-icon-square.dg-nav-icon {{ width: 30px; height: 30px; background: {GRAY_BG}; }}
-        .dg-nav-row-overlay.active .dg-icon-square.dg-nav-icon {{ background: {MINT_LIGHT}; }}
-        .dg-nav-label {{
-            font-size: 0.9rem; color: {TEXT_PRIMARY}; flex-grow: 1; min-width: 0;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        /* Sidebar nav rows are real st.button elements (reliable click targets,
+           native Material icon rendering) restyled to look like plain rows —
+           transparent/left-aligned by default, tinted + bold + a green left
+           edge for whichever one is the current page. */
+        div[class*="st-key-navrow_"], div[class*="st-key-navactive_"] {{ margin-bottom: 2px; }}
+        div[class*="st-key-navrow_"] div[data-testid="stButton"] > button,
+        div[class*="st-key-navactive_"] div[data-testid="stButton"] > button {{
+            width: 100% !important; justify-content: flex-start !important; text-align: left !important;
+            background: transparent !important; color: {TEXT_PRIMARY} !important; font-weight: 500 !important;
+            border: none !important; border-left: 4px solid transparent !important; border-radius: 10px !important;
+            padding: 8px 12px !important; box-shadow: none !important;
         }}
-        .dg-nav-row-overlay.active .dg-nav-label {{ font-weight: 700; }}
-
-        /* Every nav row is a fixed-height container: the visible styled HTML sits on
-           top (pointer-events:none so clicks fall through) and a fully transparent
-           real st.button fills the same box beneath it, so the row is genuinely
-           clickable while looking like plain styled HTML, not a default button. */
-        div[class*="st-key-navrow_"] {{
-            position: relative; height: 44px; margin-bottom: 3px; overflow: hidden;
+        div[class*="st-key-navrow_"] div[data-testid="stButton"] > button:hover {{
+            background: {GRAY_BG} !important; color: {TEXT_PRIMARY} !important;
         }}
-        div[class*="st-key-navrow_"] .dg-nav-row-overlay {{
-            position: absolute; inset: 0; z-index: 2; pointer-events: none;
-            display: flex; align-items: center; gap: 10px; padding: 0 10px;
-            border-radius: 12px; border-left: 4px solid transparent; overflow: hidden;
-        }}
-        div[class*="st-key-navrow_"] .dg-nav-row-overlay.active {{
-            background: {MINT_LIGHT}; border-left: 4px solid {FOREST};
-        }}
-        div[class*="st-key-navrow_"] div[data-testid="stButton"] {{
-            position: absolute; inset: 0; z-index: 1; margin: 0 !important;
-        }}
-        div[class*="st-key-navrow_"] div[data-testid="stButton"] > button {{
-            width: 100% !important; height: 100% !important; padding: 0 !important; margin: 0 !important;
-            opacity: 0 !important; background: transparent !important; border-radius: 12px !important;
-            box-shadow: none !important;
+        div[class*="st-key-navactive_"] div[data-testid="stButton"] > button {{
+            background: {MINT_LIGHT} !important; font-weight: 700 !important;
+            border-left: 4px solid {FOREST} !important; color: {FOREST} !important;
         }}
 
         /* ---- Top bar ---- */
