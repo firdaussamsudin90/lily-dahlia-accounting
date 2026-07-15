@@ -46,7 +46,6 @@ def inject_theme():
         }}
         [data-testid="stHeader"] {{
             background: {BG};
-            height: 0.5rem;
         }}
         [data-testid="stMainBlockContainer"], .block-container {{
             padding-top: 1.2rem;
@@ -134,7 +133,7 @@ def inject_theme():
         .dg-pill-btn-outline {{ background: #fff; color: {TEXT_PRIMARY} !important; border-color: {BORDER}; }}
 
         .dg-badge {{
-            display: inline-flex; align-items: center; justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
             min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
             background: {FOREST}; color: #fff; font-size: 0.7rem; font-weight: 700;
         }}
@@ -173,7 +172,10 @@ def inject_theme():
         }}
         .dg-icon-square.dg-nav-icon {{ width: 30px; height: 30px; background: {GRAY_BG}; }}
         .dg-nav-row-overlay.active .dg-icon-square.dg-nav-icon {{ background: {MINT_LIGHT}; }}
-        .dg-nav-label {{ font-size: 0.9rem; color: {TEXT_PRIMARY}; flex-grow: 1; }}
+        .dg-nav-label {{
+            font-size: 0.9rem; color: {TEXT_PRIMARY}; flex-grow: 1; min-width: 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }}
         .dg-nav-row-overlay.active .dg-nav-label {{ font-weight: 700; }}
 
         /* Every nav row is a fixed-height container: the visible styled HTML sits on
@@ -181,12 +183,12 @@ def inject_theme():
            real st.button fills the same box beneath it, so the row is genuinely
            clickable while looking like plain styled HTML, not a default button. */
         div[class*="st-key-navrow_"] {{
-            position: relative; height: 44px; margin-bottom: 3px;
+            position: relative; height: 44px; margin-bottom: 3px; overflow: hidden;
         }}
         div[class*="st-key-navrow_"] .dg-nav-row-overlay {{
             position: absolute; inset: 0; z-index: 2; pointer-events: none;
             display: flex; align-items: center; gap: 10px; padding: 0 10px;
-            border-radius: 12px; border-left: 4px solid transparent;
+            border-radius: 12px; border-left: 4px solid transparent; overflow: hidden;
         }}
         div[class*="st-key-navrow_"] .dg-nav-row-overlay.active {{
             background: {MINT_LIGHT}; border-left: 4px solid {FOREST};
@@ -202,19 +204,22 @@ def inject_theme():
 
         /* ---- Top bar ---- */
         .dg-topbar {{
-            display: flex; align-items: center; justify-content: space-between; gap: 16px;
-            margin-bottom: 20px;
+            display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between;
+            gap: 16px; margin-bottom: 20px; width: 100%;
         }}
         .dg-search {{
-            flex-grow: 1; max-width: 380px; display: flex; align-items: center; gap: 8px;
+            flex: 1 1 auto; min-width: 0; max-width: 380px; display: flex; align-items: center; gap: 8px;
             background: {CARD_BG}; border: 1px solid {BORDER}; border-radius: 999px;
-            padding: 9px 16px; color: {TEXT_MUTED}; box-shadow: {SHADOW};
+            padding: 9px 16px; color: {TEXT_MUTED}; box-shadow: {SHADOW}; overflow: hidden;
         }}
+        .dg-search span:first-of-type {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
         .dg-kbd {{
-            margin-left: auto; font-size: 0.7rem; background: {GRAY_BG}; color: {TEXT_SECONDARY};
+            margin-left: auto; flex-shrink: 0; font-size: 0.7rem; background: {GRAY_BG}; color: {TEXT_SECONDARY};
             border-radius: 6px; padding: 2px 6px; font-family: monospace;
         }}
-        .dg-topbar-icons {{ display: flex; align-items: center; gap: 14px; color: {TEXT_SECONDARY}; }}
+        .dg-topbar-icons {{
+            display: flex; flex-wrap: nowrap; flex-shrink: 0; align-items: center; gap: 14px; color: {TEXT_SECONDARY};
+        }}
         .dg-avatar {{
             display: flex; align-items: center; gap: 10px;
         }}
