@@ -55,9 +55,11 @@ def inject_theme():
         }}
         [data-testid="stSidebarNav"] {{ display: none; }}
         /* Streamlit puts a ~1rem gap between every element in a vertical block
-           by default — fine for normal content, but way too loose for a list
-           of nav rows. Tighten it just inside the sidebar. */
-        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap: 0.2rem; }}
+           by default — fine for normal content, but too loose for a list of
+           nav rows. Tighten it for comfortable (not cramped) item-to-item
+           spacing; each section label then adds its own larger top margin
+           below, so a new section still reads as clearly separated. */
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap: 0.35rem; }}
 
         h1, h2, h3, h4, .dg-heading {{
             color: {TEXT_PRIMARY} !important;
@@ -170,7 +172,7 @@ def inject_theme():
         }}
         .dg-sidebar-section {{
             font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
-            color: {TEXT_MUTED}; margin: 14px 10px 6px 10px;
+            color: {TEXT_MUTED}; margin: 28px 10px 10px 10px;
         }}
         /* Sidebar nav rows are real st.button elements (reliable click targets,
            native Material icon rendering) restyled to look like plain rows —
