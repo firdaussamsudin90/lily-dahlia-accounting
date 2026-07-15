@@ -175,10 +175,20 @@ def inject_theme():
         div[class*="st-key-navrow_"], div[class*="st-key-navactive_"] {{ margin-bottom: 2px; }}
         div[class*="st-key-navrow_"] div[data-testid="stButton"] > button,
         div[class*="st-key-navactive_"] div[data-testid="stButton"] > button {{
-            width: 100% !important; justify-content: flex-start !important; text-align: left !important;
+            width: 100% !important; display: flex !important; justify-content: flex-start !important;
+            text-align: left !important;
             background: transparent !important; color: {TEXT_PRIMARY} !important; font-weight: 500 !important;
             border: none !important; border-left: 4px solid transparent !important; border-radius: 10px !important;
             padding: 8px 12px !important; box-shadow: none !important;
+        }}
+        /* Streamlit centers button content by default via an inner wrapper —
+           override every descendant, not just the button itself, since the
+           exact nesting level that centers it isn't something CSS-from-outside
+           can target precisely. justify-content is a no-op on non-flex
+           elements, so this is safe to apply broadly. */
+        div[class*="st-key-navrow_"] div[data-testid="stButton"] > button *,
+        div[class*="st-key-navactive_"] div[data-testid="stButton"] > button * {{
+            justify-content: flex-start !important; text-align: left !important; width: auto !important;
         }}
         div[class*="st-key-navrow_"] div[data-testid="stButton"] > button:hover {{
             background: {GRAY_BG} !important; color: {TEXT_PRIMARY} !important;
