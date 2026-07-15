@@ -54,6 +54,10 @@ def inject_theme():
             border-right: 1px solid {BORDER};
         }}
         [data-testid="stSidebarNav"] {{ display: none; }}
+        /* Streamlit puts a ~1rem gap between every element in a vertical block
+           by default — fine for normal content, but way too loose for a list
+           of nav rows. Tighten it just inside the sidebar. */
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{ gap: 0.2rem; }}
 
         h1, h2, h3, h4, .dg-heading {{
             color: {TEXT_PRIMARY} !important;
