@@ -26,6 +26,17 @@ GREEN_BG = "#DFF3E8"
 GREEN_TEXT = "#1F4D3C"
 
 
+def html(s):
+    """Flattens a (Python-indented) multi-line HTML string before it goes to
+    st.markdown(unsafe_allow_html=True). Two Markdown quirks otherwise bite
+    hand-written HTML blocks like these: a line indented 4+ spaces is read as
+    a code block instead of HTML, and a line that's blank (e.g. an
+    interpolated value that happened to be an empty string) ends the HTML
+    block early, dumping everything after it into a stray code block. Both
+    are avoided by stripping every line and dropping any that end up empty."""
+    return "\n".join(line.strip() for line in s.strip().splitlines() if line.strip())
+
+
 def inject_theme():
     st.markdown(
         f"""

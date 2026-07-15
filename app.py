@@ -5,7 +5,7 @@ import streamlit as st
 from modules.auth import require_login
 from modules.db import get_connection, init_db
 from modules.icons import icon
-from modules.theme import FOREST, TEXT_MUTED, TEXT_SECONDARY, inject_theme
+from modules.theme import FOREST, TEXT_MUTED, TEXT_SECONDARY, html, inject_theme
 
 st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🧾", layout="wide")
 inject_theme()
@@ -63,13 +63,13 @@ def nav_row(page, icon_name, badge_count, active):
     icon_color = FOREST if active else TEXT_SECONDARY
     with st.container(key=row_key):
         st.markdown(
-            f"""
+            html(f"""
             <div class="dg-nav-row-overlay {'active' if active else ''}">
                 <span class="dg-icon-square dg-nav-icon">{icon(icon_name, size=17, color=icon_color)}</span>
                 <span class="dg-nav-label">{page.title}</span>
                 {badge_html}
             </div>
-            """,
+            """),
             unsafe_allow_html=True,
         )
         if st.button("", key=f"btn_{row_key}", use_container_width=True):
@@ -78,7 +78,7 @@ def nav_row(page, icon_name, badge_count, active):
 
 with st.sidebar:
     st.markdown(
-        f"""
+        html(f"""
         <div class="dg-sidebar-logo">
             <span class="dg-icon-square" style="background:{FOREST};">{icon("sparkle", size=18, color="#fff")}</span>
             <div>
@@ -86,7 +86,7 @@ with st.sidebar:
                 <div style="font-size:0.72rem;color:{TEXT_MUTED};">Lily Dahlia Enterprise</div>
             </div>
         </div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
 
@@ -99,16 +99,16 @@ with st.sidebar:
     settings_page = st_pages["SETTINGS"][0]
     with st.container(key="navrow_general_settings"):
         st.markdown(
-            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("settings", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Settings</span></div>""",
+            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("settings", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Settings</span></div>"""),
             unsafe_allow_html=True,
         )
         if st.button("", key="btn_general_settings", use_container_width=True):
             st.switch_page(settings_page)
     with st.container(key="navrow_general_help"):
         st.markdown(
-            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("help-circle", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Help</span></div>""",
+            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("help-circle", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Help</span></div>"""),
             unsafe_allow_html=True,
         )
         if st.button("", key="btn_general_help", use_container_width=True):
@@ -117,8 +117,8 @@ with st.sidebar:
             )
     with st.container(key="navrow_general_logout"):
         st.markdown(
-            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
-            {icon("log-out", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Logout</span></div>""",
+            html(f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("log-out", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Logout</span></div>"""),
             unsafe_allow_html=True,
         )
         if st.button("", key="btn_general_logout", use_container_width=True):
@@ -127,7 +127,7 @@ with st.sidebar:
 
 # --------------------------------------------------------------- top bar ---
 st.markdown(
-    f"""
+    html(f"""
     <div class="dg-topbar">
         <div class="dg-search">
             {icon("search", size=16, color=TEXT_MUTED)}
@@ -146,7 +146,7 @@ st.markdown(
             </div>
         </div>
     </div>
-    """,
+    """),
     unsafe_allow_html=True,
 )
 
