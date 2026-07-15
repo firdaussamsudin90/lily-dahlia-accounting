@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS documents (
     notes TEXT
 );
 
+-- Added for the Upload Documents page (one-by-one + WhatsApp import modes).
+-- ADD COLUMN IF NOT EXISTS is idempotent in Postgres (unlike ADD CONSTRAINT),
+-- so this fits the same run-every-startup pattern as the CREATE TABLEs above.
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS caption TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS flag_color TEXT;      -- 'yellow' / 'red' / NULL, same convention as transactions
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS flag_note TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual_upload';  -- 'manual_upload' / 'whatsapp_import'
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS message_date TEXT;    -- WhatsApp message timestamp (ISO date), when source='whatsapp_import'
+
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
     month TEXT NOT NULL,                  -- "2026-01"
