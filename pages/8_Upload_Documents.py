@@ -73,11 +73,12 @@ with tab_manual:
                 st.markdown(f"**{f.name}**")
                 cols = st.columns([1, 2])
                 if is_image(f.name):
-                    cols[0].image(f.getvalue(), width=160)
+                    cols[0].image(f.getvalue(), width=260)
+                    cols[0].caption("Hover the image and click the ⤢ icon to view it full size.")
                 else:
                     cols[0].caption("(no preview)")
                 cols[1].text_input("Caption / description", key=f"manual_caption_{i}")
-                cols[1].selectbox(
+                st.selectbox(
                     "Match to ledger entry", options=list(txn_options.keys()),
                     format_func=lambda k: txn_options[k], key=f"manual_match_{i}",
                 )
@@ -196,9 +197,10 @@ with tab_whatsapp:
 
             with st.form("wa_confirm_form"):
                 for i, item in enumerate(parsed_items):
-                    cols = st.columns([1, 2, 1])
+                    cols = st.columns([1, 2])
                     if item["media_bytes"] and is_image(item["media_filename"]):
-                        cols[0].image(item["media_bytes"], width=140)
+                        cols[0].image(item["media_bytes"], width=220)
+                        cols[0].caption("Hover the image and click the ⤢ icon to view it full size.")
                     elif item["media_bytes"]:
                         cols[0].caption(f"📎 {item['media_filename']} (no preview)")
                     else:
@@ -213,15 +215,17 @@ with tab_whatsapp:
                         option_ids.index(item["suggested_transaction_id"])
                         if item["suggested_transaction_id"] in option_ids else 0
                     )
-                    cols[2].selectbox(
-                        "Match", options=option_ids, format_func=lambda k: wa_txn_options[k],
+                    # Full row width (not squeezed into a side column) so the option text —
+                    # date, counterparty, amount, category — isn't cut off.
+                    st.selectbox(
+                        "Match to ledger entry", options=option_ids, format_func=lambda k: wa_txn_options[k],
                         index=default_idx, key=f"wa_match_{i}",
                     )
                     if item["confidence"] == "red":
-                        cols[2].error(item["reason"])
+                        st.error(item["reason"])
                     elif item["confidence"] == "yellow":
-                        cols[2].warning(item["reason"])
-                    cols[2].checkbox("Include", value=item["media_bytes"] is not None, key=f"wa_include_{i}")
+                        st.warning(item["reason"])
+                    st.checkbox("Include", value=item["media_bytes"] is not None, key=f"wa_include_{i}")
                     st.divider()
 
                 if st.form_submit_button("✅ Confirm & save selected", type="primary"):
@@ -277,7 +281,8 @@ else:
             if doc["flag_color"]:
                 (st.error if doc["flag_color"] == "red" else st.warning)(doc["flag_note"] or "Flagged for review.")
             if doc["storage_path"] and is_image(doc["filename"]):
-                st.image(download_bytes(doc["storage_path"]), width=200)
+                st.image(download_bytes(doc["storage_path"]), width=260)
+                st.caption("Hover the image and click the ⤢ icon to view it full size.")
 
             scope = st.multiselect(
                 "Ledger months to search", options=review_months, default=review_months,
