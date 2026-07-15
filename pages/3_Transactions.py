@@ -96,7 +96,7 @@ if edit_id:
                     doc_bytes = download_bytes(doc["storage_path"])
                     ext = (doc["filename"] or "").rsplit(".", 1)[-1].lower()
                     if ext in IMAGE_EXTS:
-                        st.image(doc_bytes, width=250)
+                        st.image(doc_bytes, width=460)
                     st.download_button(
                         "Download attached document", doc_bytes,
                         file_name=doc["filename"] or f"document_{doc['id']}", key=f"dl_doc_{doc['id']}",

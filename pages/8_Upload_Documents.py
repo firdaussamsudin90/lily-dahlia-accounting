@@ -71,13 +71,11 @@ with tab_manual:
         with st.form("manual_upload_form"):
             for i, f in enumerate(uploaded_files):
                 st.markdown(f"**{f.name}**")
-                cols = st.columns([1, 2])
                 if is_image(f.name):
-                    cols[0].image(f.getvalue(), width=260)
-                    cols[0].caption("Hover the image and click the ⤢ icon to view it full size.")
+                    st.image(f.getvalue(), width=460)
                 else:
-                    cols[0].caption("(no preview)")
-                cols[1].text_input("Caption / description", key=f"manual_caption_{i}")
+                    st.caption("(no preview)")
+                st.text_input("Caption / description", key=f"manual_caption_{i}")
                 st.selectbox(
                     "Match to ledger entry", options=list(txn_options.keys()),
                     format_func=lambda k: txn_options[k], key=f"manual_match_{i}",
@@ -197,19 +195,17 @@ with tab_whatsapp:
 
             with st.form("wa_confirm_form"):
                 for i, item in enumerate(parsed_items):
-                    cols = st.columns([1, 2])
+                    st.markdown(f"**{item['date'].isoformat()} {item['time']}** — {item['sender']}")
                     if item["media_bytes"] and is_image(item["media_filename"]):
-                        cols[0].image(item["media_bytes"], width=220)
-                        cols[0].caption("Hover the image and click the ⤢ icon to view it full size.")
+                        st.image(item["media_bytes"], width=460)
                     elif item["media_bytes"]:
-                        cols[0].caption(f"📎 {item['media_filename']} (no preview)")
+                        st.caption(f"📎 {item['media_filename']} (no preview)")
                     else:
-                        cols[0].warning(f"⚠️ {item['media_filename']} not in upload")
+                        st.warning(f"⚠️ {item['media_filename']} not in upload")
 
-                    cols[1].markdown(f"**{item['date'].isoformat()} {item['time']}** — {item['sender']}")
-                    cols[1].write(item["caption"] or "_(no caption)_")
+                    st.write(item["caption"] or "_(no caption)_")
                     if item["suggested_amount"] is not None:
-                        cols[1].caption(f"Detected amount: RM{item['suggested_amount']:,.2f}")
+                        st.caption(f"Detected amount: RM{item['suggested_amount']:,.2f}")
 
                     default_idx = (
                         option_ids.index(item["suggested_transaction_id"])
@@ -281,8 +277,7 @@ else:
             if doc["flag_color"]:
                 (st.error if doc["flag_color"] == "red" else st.warning)(doc["flag_note"] or "Flagged for review.")
             if doc["storage_path"] and is_image(doc["filename"]):
-                st.image(download_bytes(doc["storage_path"]), width=260)
-                st.caption("Hover the image and click the ⤢ icon to view it full size.")
+                st.image(download_bytes(doc["storage_path"]), width=460)
 
             scope = st.multiselect(
                 "Ledger months to search", options=review_months, default=review_months,
