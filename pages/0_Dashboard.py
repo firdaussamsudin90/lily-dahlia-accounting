@@ -5,7 +5,6 @@ import streamlit as st
 from modules.db import get_connection, init_db
 from modules.auth import require_login
 
-st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 init_db()
 require_login()
 

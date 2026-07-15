@@ -8,7 +8,6 @@ from modules.db import init_db
 from modules.outstanding_documents import attach_document, get_outstanding
 from modules.storage import download_bytes
 
-st.set_page_config(page_title="Outstanding Documents", page_icon="📎", layout="wide")
 init_db()
 require_login()
 st.title("📎 Outstanding Documents")

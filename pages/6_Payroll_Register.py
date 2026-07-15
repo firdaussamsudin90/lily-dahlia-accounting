@@ -8,7 +8,6 @@ from modules.db import get_connection, init_db
 from modules.auth import require_login
 from modules.payroll_register import generate_and_save, get_saved_register
 
-st.set_page_config(page_title="Payroll Register", page_icon="👥", layout="wide")
 init_db()
 require_login()
 st.title("👥 Monthly Payroll Register")

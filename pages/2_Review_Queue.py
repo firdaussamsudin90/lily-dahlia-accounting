@@ -6,7 +6,6 @@ import streamlit as st
 from modules.auth import require_login
 from modules.db import get_connection, init_db
 
-st.set_page_config(page_title="Review Queue", page_icon="🔎", layout="wide")
 init_db()
 require_login()
 st.title("🔎 Review Queue")

@@ -11,7 +11,6 @@ from modules.receipt_ocr import extract_amount, extract_text
 from modules.storage import download_bytes
 from modules.whatsapp_import import parse_export
 
-st.set_page_config(page_title="Upload Documents", page_icon="📥", layout="wide")
 init_db()
 require_login()
 st.title("📥 Upload Documents")

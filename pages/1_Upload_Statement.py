@@ -12,7 +12,6 @@ from modules.db import get_connection, init_db
 from modules.auth import require_login
 from modules.storage import upload_bytes
 
-st.set_page_config(page_title="Upload Statement", page_icon="📤", layout="wide")
 init_db()
 require_login()
 st.title("📤 Upload Bank Statement")
