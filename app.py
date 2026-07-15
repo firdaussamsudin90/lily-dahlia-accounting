@@ -1,47 +1,153 @@
+import re
+
 import streamlit as st
 
-st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🧾", layout="wide")
+from modules.auth import require_login
+from modules.db import get_connection, init_db
+from modules.icons import icon
+from modules.theme import FOREST, TEXT_MUTED, TEXT_SECONDARY, inject_theme
 
-# Section headers render via Streamlit's own st.navigation grouping (below); this
-# just enforces the small/muted/letter-spaced look on top of the default style.
+st.set_page_config(page_title="Lily Dahlia Enterprise — Accounting", page_icon="🧾", layout="wide")
+inject_theme()
+init_db()
+require_login()
+
+# ---------------------------------------------------------------- page map --
+PAGES = {
+    "OVERVIEW": [
+        ("pages/0_Dashboard.py", "Dashboard", "grid", True),
+    ],
+    "DATA ENTRY": [
+        ("pages/1_Upload_Statement.py", "Upload Statement", "upload", False),
+        ("pages/8_Upload_Documents.py", "Upload Documents", "file-plus", False),
+    ],
+    "RECONCILIATION": [
+        ("pages/2_Review_Queue.py", "Review Queue", "search", False),
+        ("pages/4_Outstanding_Documents.py", "Outstanding Documents", "paperclip", False),
+    ],
+    "RECORDS": [
+        ("pages/3_Transactions.py", "Transactions", "list", False),
+        ("pages/5_Vouchers.py", "Vouchers", "file-text", False),
+        ("pages/6_Payroll_Register.py", "Payroll Register", "users", False),
+    ],
+    "SETTINGS": [
+        ("pages/7_Categorization_Rules.py", "Categorization Rules", "settings", False),
+    ],
+}
+
+st_pages = {
+    section: [st.Page(path, title=title, default=is_default) for path, title, _icon, is_default in items]
+    for section, items in PAGES.items()
+}
+nav = st.navigation(st_pages, position="hidden")
+
+# --------------------------------------------------------- pending badges --
+conn = get_connection()
+review_count = conn.execute(
+    "SELECT COUNT(*) AS count FROM transactions WHERE category IS NULL OR flag_color = 'red'"
+).fetchone()["count"]
+outstanding_count = conn.execute(
+    "SELECT COUNT(*) AS count FROM transactions WHERE needs_document = TRUE AND document_id IS NULL"
+).fetchone()["count"]
+conn.close()
+BADGES = {"Review Queue": review_count, "Outstanding Documents": outstanding_count}
+
+
+def slug(text):
+    return re.sub(r"[^a-zA-Z0-9]", "_", text)
+
+
+def nav_row(page, icon_name, badge_count, active):
+    row_key = f"navrow_{slug(page.title)}"
+    badge_html = f'<span class="dg-badge">{badge_count}</span>' if badge_count else ""
+    icon_color = FOREST if active else TEXT_SECONDARY
+    with st.container(key=row_key):
+        st.markdown(
+            f"""
+            <div class="dg-nav-row-overlay {'active' if active else ''}">
+                <span class="dg-icon-square dg-nav-icon">{icon(icon_name, size=17, color=icon_color)}</span>
+                <span class="dg-nav-label">{page.title}</span>
+                {badge_html}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("", key=f"btn_{row_key}", use_container_width=True):
+            st.switch_page(page)
+
+
+with st.sidebar:
+    st.markdown(
+        f"""
+        <div class="dg-sidebar-logo">
+            <span class="dg-icon-square" style="background:{FOREST};">{icon("sparkle", size=18, color="#fff")}</span>
+            <div>
+                <div style="font-weight:800;font-size:1.05rem;color:#15171A;line-height:1.1;">Demiglow</div>
+                <div style="font-size:0.72rem;color:{TEXT_MUTED};">Lily Dahlia Enterprise</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    for section, items in PAGES.items():
+        st.markdown(f'<div class="dg-sidebar-section">{section}</div>', unsafe_allow_html=True)
+        for page_obj, (path, title, icon_name, _default) in zip(st_pages[section], items):
+            nav_row(page_obj, icon_name, BADGES.get(title), active=(nav.title == title))
+
+    st.markdown('<div class="dg-sidebar-section">GENERAL</div>', unsafe_allow_html=True)
+    settings_page = st_pages["SETTINGS"][0]
+    with st.container(key="navrow_general_settings"):
+        st.markdown(
+            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("settings", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Settings</span></div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button("", key="btn_general_settings", use_container_width=True):
+            st.switch_page(settings_page)
+    with st.container(key="navrow_general_help"):
+        st.markdown(
+            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("help-circle", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Help</span></div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button("", key="btn_general_help", use_container_width=True):
+            st.toast(
+                "Need a hand? Ping Firdaus, or check Getting_Started_Guide.md in the repo.", icon="💬"
+            )
+    with st.container(key="navrow_general_logout"):
+        st.markdown(
+            f"""<div class="dg-nav-row-overlay"><span class="dg-icon-square dg-nav-icon">
+            {icon("log-out", size=17, color=TEXT_SECONDARY)}</span><span class="dg-nav-label">Logout</span></div>""",
+            unsafe_allow_html=True,
+        )
+        if st.button("", key="btn_general_logout", use_container_width=True):
+            st.session_state["authenticated"] = False
+            st.rerun()
+
+# --------------------------------------------------------------- top bar ---
 st.markdown(
-    """
-    <style>
-    [data-testid="stSidebarNav"] [data-testid="stNavSectionHeader"] {
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(250, 250, 250, 0.45);
-        margin-top: 1.1rem;
-        margin-bottom: 0.15rem;
-    }
-    </style>
+    f"""
+    <div class="dg-topbar">
+        <div class="dg-search">
+            {icon("search", size=16, color=TEXT_MUTED)}
+            <span>Search…</span>
+            <span class="dg-kbd">⌘F</span>
+        </div>
+        <div class="dg-topbar-icons">
+            {icon("mail", size=19, color=TEXT_SECONDARY)}
+            {icon("bell", size=19, color=TEXT_SECONDARY)}
+            <div class="dg-avatar">
+                <div class="dg-avatar-circle">FD</div>
+                <div>
+                    <div style="font-weight:700;font-size:0.85rem;color:#15171A;">Firdaus</div>
+                    <div style="font-size:0.74rem;color:{TEXT_MUTED};">m.firdaussamsudin@gmail.com</div>
+                </div>
+            </div>
+        </div>
+    </div>
     """,
     unsafe_allow_html=True,
 )
 
-pages = {
-    "OVERVIEW": [
-        st.Page("pages/00_Home.py", title="Home", icon="🏠", default=True),
-        st.Page("pages/0_Dashboard.py", title="Dashboard", icon="📊"),
-    ],
-    "DATA ENTRY": [
-        st.Page("pages/1_Upload_Statement.py", title="Upload Statement", icon="📤"),
-        st.Page("pages/8_Upload_Documents.py", title="Upload Documents", icon="📥"),
-    ],
-    "RECONCILIATION": [
-        st.Page("pages/2_Review_Queue.py", title="Review Queue", icon="🔎"),
-        st.Page("pages/4_Outstanding_Documents.py", title="Outstanding Documents", icon="📎"),
-    ],
-    "RECORDS": [
-        st.Page("pages/3_Transactions.py", title="Transactions", icon="📒"),
-        st.Page("pages/5_Vouchers.py", title="Vouchers", icon="🧾"),
-        st.Page("pages/6_Payroll_Register.py", title="Payroll Register", icon="👥"),
-    ],
-    "SETTINGS": [
-        st.Page("pages/7_Categorization_Rules.py", title="Categorization Rules", icon="⚙️"),
-    ],
-}
-
-st.navigation(pages).run()
+nav.run()
