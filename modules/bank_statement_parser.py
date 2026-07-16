@@ -70,21 +70,37 @@ TRANSACTION_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Recurring page-footer legal/disclaimer boilerplate AND the letterhead
-# reprinted at the top of every subsequent page (bank name/address, account
-# holder, page number, the statement's own generation date, account number,
-# account type) — both can get merged into a transaction's note (wrapped
-# continuation lines) or, worse, misparsed as their own bogus transaction:
-# the letterhead's "TARIKH PENYATA / STATEMENT DATE : 31/01/26" is a
-# date-shaped string indistinguishable from a real transaction date by
-# pattern alone, and used to flush whatever transaction was still open
-# (with an empty note) right before its real continuation text was reached.
+# Recurring page-footer legal/disclaimer boilerplate — a fixed, numbered,
+# bilingual/trilingual (Malay/Chinese/English) notice that can get merged
+# into a transaction's note (wrapped continuation lines). Individually
+# whitelisting every phrase in it is a losing game (it has Chinese text,
+# multiple numbered clauses, etc.) — see SKIP_ZONE_* below for the real fix,
+# which skips the whole span structurally instead. FOOTER_RE stays as a
+# lighter-weight check used elsewhere (stripping trailing junk already
+# merged into an assembled note).
 FOOTER_MARKERS = [
     "BAKI LEGAR", "PROTECTED BY PIDM", "Maybank Islamic Berhad", "TARIKH PENYATA",
     "Semua maklumat dan baki", "IBS KOTA KEMUNING", "Overdrawn balances",
     "STATEMENT DATE", "NOMBOR AKAUN", "ACCOUNT NUMBER", "SME FIRST ACCOUNT", "MUKA",
 ]
 FOOTER_RE = re.compile("|".join(re.escape(m) for m in FOOTER_MARKERS), re.IGNORECASE)
+
+# Between the last transaction on a page and the real continuation of its
+# wrapped description on the next page sits: the footer legal notice (fixed
+# bilingual/trilingual disclaimer, several lines, some in Chinese), then the
+# next page's letterhead (bank name/address, account holder, page number,
+# the statement's own generation date, account number, account type). All
+# of that varies too much line-by-line to whitelist every phrase in it — so
+# rather than recognizing each line individually, treat the whole span as
+# one skip zone: entered on any of these trigger phrases (confirmed to
+# start the footer notice on a real statement), exited only once the
+# column header repeats, which is the one thing guaranteed to reappear
+# identically at the top of every page's transaction table.
+SKIP_ZONE_START_MARKERS = ["BAKI LEGAR", "Maybank Islamic Berhad", "PROTECTED BY PIDM"]
+SKIP_ZONE_START_RE = re.compile("|".join(re.escape(m) for m in SKIP_ZONE_START_MARKERS), re.IGNORECASE)
+
+SKIP_ZONE_END_MARKERS = ["ENTRY DATE", "TARIKH MASUK", "ACCOUNT TRANSACTIONS", "URUSNIAGA AKAUN"]
+SKIP_ZONE_END_RE = re.compile("|".join(re.escape(m) for m in SKIP_ZONE_END_MARKERS), re.IGNORECASE)
 
 
 def _split_counterparty_from_blob(text):
@@ -131,6 +147,20 @@ def _split_counterparty_note(desc):
     if len(parts) == 2:
         return parts[0], parts[1]
     return desc, None
+
+
+def _is_repeated_header_line(line):
+    """True if a line looks like the column-header row Maybank reprints at
+    the top of every page's table (e.g. "TARIKH MASUK TARIKH NILAI BUTIR
+    URUSNIAGA...") rather than real transaction content — recognized by
+    matching 2+ distinct header-keyword categories, reusing the same
+    keyword map _classify_header() uses for the table-extraction path.
+    Used to fully exit a footer/letterhead skip zone in _parse_via_text:
+    SKIP_ZONE_END_RE marks where the header starts, but the header itself
+    can span more than one extracted line."""
+    line_l = line.lower()
+    matches = sum(1 for keywords in HEADER_KEYWORDS.values() if any(kw in line_l for kw in keywords))
+    return matches >= 2
 
 
 def _classify_header(header_row):
@@ -233,11 +263,21 @@ def _parse_via_text(pdf):
 
     transactions = []
     pending = None
+    in_skip_zone = False
     for line in lines:
-        if FOOTER_RE.search(line):
-            # Page furniture (footer legal notice, or next page's letterhead/
-            # account header) — never a real transaction date or continuation
-            # text, even if it happens to contain a date-shaped fragment.
+        if in_skip_zone:
+            if SKIP_ZONE_END_RE.search(line):
+                in_skip_zone = False
+            continue
+        if SKIP_ZONE_START_RE.search(line):
+            in_skip_zone = True
+            continue
+        if FOOTER_RE.search(line) or _is_repeated_header_line(line):
+            # Lighter-weight noise outside a skip zone (e.g. a footer marker
+            # on its own, or the repeated column header itself — which can
+            # span more than one line, spilling past where the skip zone's
+            # own end-marker matched) — never a real transaction date or
+            # continuation text.
             continue
         m = DATE_LINE_RE.match(line)
         if m:
@@ -278,8 +318,12 @@ def _parse_via_text(pdf):
     transactions = split_transactions
 
     # Resolve debit/credit/balance from trailing amounts using the running-balance heuristic.
+    # Seeded with the statement's own printed opening balance (if found) so the
+    # very first transaction can also have its debit/credit determined —
+    # otherwise there's nothing to compare its balance against and it would
+    # always be left blank, regardless of how unambiguous the real statement is.
     resolved = []
-    running_balance = None
+    running_balance = _find_balance_near_keywords(full_text.lower(), OPENING_KEYWORDS)
     for t in transactions:
         amounts = t.pop("amounts", [])
         debit = credit = balance = None
