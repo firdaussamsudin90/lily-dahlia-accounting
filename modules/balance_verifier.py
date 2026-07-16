@@ -11,6 +11,40 @@ the chain breaks.
 TOLERANCE = 0.01  # cents rounding
 
 
+def recalculate_running_balances(conn, month):
+    """Recomputes running_balance for every transaction in `month`, in
+    date/id order, cascading forward from the month's printed opening
+    balance. Used after a manual correction to a transaction's debit/credit
+    (via the Transactions page) so the rest of the chain stays internally
+    consistent — otherwise only the edited row's own balance would be
+    correct, with everything printed after it silently stale.
+
+    Returns (final_running_balance, statement_closing_balance) so the
+    caller can flag it if they no longer match — that's a sign the fix
+    wasn't complete (e.g. a value that shifted onto the wrong row entirely,
+    needing a second row corrected too), not that this recalculation itself
+    is wrong.
+    """
+    stmt = conn.execute(
+        "SELECT opening_balance, closing_balance FROM bank_statements WHERE month = %s ORDER BY id DESC LIMIT 1",
+        (month,),
+    ).fetchone()
+    if stmt is None:
+        return None, None
+
+    running = float(stmt["opening_balance"])
+    txns = conn.execute(
+        "SELECT id, debit, credit FROM transactions WHERE month = %s ORDER BY date ASC, id ASC", (month,)
+    ).fetchall()
+    for t in txns:
+        debit = float(t["debit"]) if t["debit"] else 0.0
+        credit = float(t["credit"]) if t["credit"] else 0.0
+        running = running + credit - debit
+        conn.execute("UPDATE transactions SET running_balance = %s WHERE id = %s", (round(running, 2), t["id"]))
+    conn.commit()
+    return round(running, 2), float(stmt["closing_balance"])
+
+
 def verify(opening_balance, closing_balance, transactions):
     errors = []
 

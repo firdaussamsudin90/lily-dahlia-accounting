@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from modules.balance_verifier import recalculate_running_balances
 from modules.db import get_connection, init_db
 from modules.auth import require_login
 from modules.storage import download_bytes
@@ -64,6 +65,18 @@ m1.metric("Transactions", len(df))
 m2.metric("Total debit (RM)", f"{total_debit:,.2f}")
 m3.metric("Total credit (RM)", f"{total_credit:,.2f}")
 
+conn = get_connection()
+statements = conn.execute(
+    f"""SELECT month, opening_balance, closing_balance FROM bank_statements
+        WHERE month IN ({','.join('%s' for _ in month_filter)}) ORDER BY month""",
+    month_filter,
+).fetchall() if month_filter else []
+conn.close()
+if statements:
+    st.caption("Opening → closing balance per statement, for reference against your bank account:")
+    for s in statements:
+        st.caption(f"**{s['month']}**: RM{s['opening_balance']:,.2f} → RM{s['closing_balance']:,.2f}")
+
 display_cols = [
     "id", "date", "counterparty", "note", "debit", "credit", "running_balance",
     "category", "subcategory", "flag_color", "needs_document", "document_id",
@@ -104,7 +117,27 @@ if edit_id:
                 else:
                     st.caption(f"Manual reference: {doc['notes'] or '(no notes)'}")
 
+        st.caption(
+            "Correcting the date/counterparty/note/debit/credit here is for fixing a bank statement "
+            "parsing mistake (wrong text or amount pulled from the PDF) — after saving, the running "
+            "balance for every transaction in this month is recalculated from the statement's opening "
+            "balance, so the chain stays consistent."
+        )
         with st.form("edit_txn"):
+            d1, d2 = st.columns(2)
+            txn_date = d1.text_input("Date (YYYY-MM-DD)", value=row["date"] or "")
+            counterparty = d2.text_input("Counterparty", value=row["counterparty"] or "")
+            note = st.text_input("Note", value=row["note"] or "")
+            a1, a2 = st.columns(2)
+            debit = a1.number_input(
+                "Debit (RM) — 0 if this is a credit", min_value=0.0, format="%.2f",
+                value=float(row["debit"]) if row["debit"] else 0.0,
+            )
+            credit = a2.number_input(
+                "Credit (RM) — 0 if this is a debit", min_value=0.0, format="%.2f",
+                value=float(row["credit"]) if row["credit"] else 0.0,
+            )
+
             c1, c2 = st.columns(2)
             category = c1.text_input("Category", value=row["category"] or "")
             subcategory = c1.text_input("Subcategory", value=row["subcategory"] or "")
@@ -115,14 +148,28 @@ if edit_id:
             needs_document = c2.checkbox("Needs document", value=bool(row["needs_document"]))
             flag_note = st.text_area("Flag note", value=row["flag_note"] or "")
             if st.form_submit_button("Save changes"):
-                conn = get_connection()
-                conn.execute(
-                    """UPDATE transactions SET category=%s, subcategory=%s, flag_color=%s, flag_note=%s,
-                       needs_document=%s WHERE id=%s""",
-                    (category or None, subcategory or None, flag_color or None, flag_note or None,
-                     bool(needs_document), edit_id),
-                )
-                conn.commit()
-                conn.close()
-                st.success("Updated.")
-                st.rerun()
+                if debit > 0 and credit > 0:
+                    st.error("A transaction can't be both a debit and a credit — set one of them to 0.")
+                else:
+                    conn = get_connection()
+                    conn.execute(
+                        """UPDATE transactions SET date=%s, counterparty=%s, note=%s, debit=%s, credit=%s,
+                           category=%s, subcategory=%s, flag_color=%s, flag_note=%s, needs_document=%s
+                           WHERE id=%s""",
+                        (txn_date, counterparty or None, note or None, debit or None, credit or None,
+                         category or None, subcategory or None, flag_color or None, flag_note or None,
+                         bool(needs_document), edit_id),
+                    )
+                    conn.commit()
+                    final_balance, closing_balance = recalculate_running_balances(conn, row["month"])
+                    conn.close()
+                    st.success("Updated — running balances for this month recalculated.")
+                    if final_balance is not None and abs(final_balance - closing_balance) > 0.01:
+                        st.warning(
+                            f"Heads up: after recalculating, the month now ends at RM{final_balance:,.2f}, "
+                            f"but the statement's printed closing balance is RM{closing_balance:,.2f} "
+                            f"(diff RM{final_balance - closing_balance:,.2f}). That usually means another "
+                            "transaction in this month also has a wrong amount — check the Upload Statement "
+                            "page's original PDF against this month's transactions for the difference."
+                        )
+                    st.rerun()
