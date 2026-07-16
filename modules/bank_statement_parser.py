@@ -70,12 +70,19 @@ TRANSACTION_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Recurring page-footer legal/disclaimer boilerplate that can get merged into
-# a transaction's note (wrapped continuation lines) or, rarely, misparsed as
-# its own bogus transaction when a date-like fragment inside it starts a line.
+# Recurring page-footer legal/disclaimer boilerplate AND the letterhead
+# reprinted at the top of every subsequent page (bank name/address, account
+# holder, page number, the statement's own generation date, account number,
+# account type) — both can get merged into a transaction's note (wrapped
+# continuation lines) or, worse, misparsed as their own bogus transaction:
+# the letterhead's "TARIKH PENYATA / STATEMENT DATE : 31/01/26" is a
+# date-shaped string indistinguishable from a real transaction date by
+# pattern alone, and used to flush whatever transaction was still open
+# (with an empty note) right before its real continuation text was reached.
 FOOTER_MARKERS = [
     "BAKI LEGAR", "PROTECTED BY PIDM", "Maybank Islamic Berhad", "TARIKH PENYATA",
     "Semua maklumat dan baki", "IBS KOTA KEMUNING", "Overdrawn balances",
+    "STATEMENT DATE", "NOMBOR AKAUN", "ACCOUNT NUMBER", "SME FIRST ACCOUNT", "MUKA",
 ]
 FOOTER_RE = re.compile("|".join(re.escape(m) for m in FOOTER_MARKERS), re.IGNORECASE)
 
@@ -227,6 +234,11 @@ def _parse_via_text(pdf):
     transactions = []
     pending = None
     for line in lines:
+        if FOOTER_RE.search(line):
+            # Page furniture (footer legal notice, or next page's letterhead/
+            # account header) — never a real transaction date or continuation
+            # text, even if it happens to contain a date-shaped fragment.
+            continue
         m = DATE_LINE_RE.match(line)
         if m:
             if pending:

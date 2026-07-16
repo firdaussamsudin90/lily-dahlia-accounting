@@ -82,10 +82,10 @@ if uploaded_pdf is not None:
     )
 
     df = pd.DataFrame(parsed["transactions"])
-    for col in ["date", "counterparty", "note", "debit", "credit", "running_balance"]:
+    for col in ["date", "counterparty", "note", "debit", "credit", "running_balance", "source_line"]:
         if col not in df.columns:
             df[col] = None
-    df = df[["date", "counterparty", "note", "debit", "credit", "running_balance"]]
+    df = df[["date", "counterparty", "note", "debit", "credit", "running_balance", "source_line"]]
     df.insert(0, "row", range(1, len(df) + 1))
 
     edited_df = st.data_editor(
@@ -100,11 +100,16 @@ if uploaded_pdf is not None:
             "debit": st.column_config.NumberColumn("Debit (RM)", format="%.2f"),
             "credit": st.column_config.NumberColumn("Credit (RM)", format="%.2f"),
             "running_balance": st.column_config.NumberColumn("Balance (RM)", format="%.2f"),
+            "source_line": st.column_config.TextColumn(
+                "Raw source text (read-only)", disabled=True,
+                help="Exactly what the parser read off the PDF for this row — check this first if a "
+                     "row looks wrong, to tell a parsing bug from a real bank statement peculiarity.",
+            ),
         },
         key="txn_editor",
     )
 
-    transactions = edited_df.drop(columns=["row"]).to_dict("records")
+    transactions = edited_df.drop(columns=["row", "source_line"]).to_dict("records")
     for t in transactions:
         t["debit"] = float(t["debit"]) if t.get("debit") not in (None, "") else None
         t["credit"] = float(t["credit"]) if t.get("credit") not in (None, "") else None
