@@ -86,12 +86,14 @@ if uploaded_pdf is not None:
         if col not in df.columns:
             df[col] = None
     df = df[["date", "counterparty", "note", "debit", "credit", "running_balance"]]
+    df.insert(0, "row", range(1, len(df) + 1))
 
     edited_df = st.data_editor(
         df,
         num_rows="dynamic",
         width="stretch",
         column_config={
+            "row": st.column_config.NumberColumn("Row #", disabled=True),
             "date": st.column_config.TextColumn("Date"),
             "counterparty": st.column_config.TextColumn("Counterparty"),
             "note": st.column_config.TextColumn("Transaction Note"),
@@ -102,7 +104,7 @@ if uploaded_pdf is not None:
         key="txn_editor",
     )
 
-    transactions = edited_df.to_dict("records")
+    transactions = edited_df.drop(columns=["row"]).to_dict("records")
     for t in transactions:
         t["debit"] = float(t["debit"]) if t.get("debit") not in (None, "") else None
         t["credit"] = float(t["credit"]) if t.get("credit") not in (None, "") else None
