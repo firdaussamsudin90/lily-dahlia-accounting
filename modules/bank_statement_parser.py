@@ -33,7 +33,14 @@ from datetime import date as date_cls
 
 import pdfplumber
 
-AMOUNT_RE = re.compile(r"-?\d{1,3}(?:,\d{3})*\.\d{2}")
+
+# Matches either a properly comma-grouped number (1,234.56) or a plain digit
+# run with no separators (1234.56) — NOT `\d{1,3}(?:,\d{3})*` alone, which
+# silently truncates a comma-less 4+-digit amount to its last 3 digits before
+# the decimal (e.g. "1865.98" -> "865.98") because \d{1,3} only ever consumes
+# up to 3 digits and there's no comma group to absorb the rest. The lookbehind/
+# lookahead stop a match from starting or ending mid-number in either case.
+AMOUNT_RE = re.compile(r"(?<!\d)-?(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}(?!\d)")
 DATE_LINE_RE = re.compile(r"^(\d{2})[/-](\d{2})(?:[/-](\d{2,4}))?\b")
 
 HEADER_KEYWORDS = {
@@ -133,7 +140,16 @@ def _classify_header(header_row):
 
 
 def _parse_via_tables(pdf):
+    # `pending` (the transaction currently accumulating wrapped continuation
+    # lines) is intentionally shared across every table on every page, not
+    # reset per table/page. A transaction's date+amount+balance row can be
+    # the last row on a page while its wrapped description continues as the
+    # first (dateless) row of the next page's table — resetting pending at
+    # a table/page boundary would flush that transaction early with an empty
+    # note and then silently drop the continuation, since it's a dateless
+    # row arriving with no pending transaction left to attach it to.
     transactions = []
+    pending = None
     for page in pdf.pages:
         tables = page.extract_tables()
         for table in tables:
@@ -141,9 +157,18 @@ def _parse_via_tables(pdf):
                 continue
             col_map = _classify_header(table[0])
             if "date" not in col_map or "balance" not in col_map:
-                continue  # not a transaction table
+                # Doesn't look like a proper transaction table — most likely
+                # this page didn't repeat the column header, and what pdfplumber
+                # grabbed here is actually the tail end of a wrapped description
+                # that started on the previous page. Rather than silently
+                # dropping it, fold it into whatever transaction is still open.
+                if pending:
+                    for row in table:
+                        extra = " ".join(str(c) for c in row if c).strip()
+                        if extra and not FOOTER_RE.search(extra):
+                            pending["note"] = (pending["note"] + " " + extra) if pending["note"] else extra
+                continue
 
-            pending = None
             for row in table[1:]:
                 date_cell = row[col_map["date"]] if col_map["date"] < len(row) else None
                 balance_cell = row[col_map["balance"]] if col_map["balance"] < len(row) else None
@@ -179,7 +204,10 @@ def _parse_via_tables(pdf):
                         "source_line": " | ".join(str(c) for c in row if c),
                     }
                 elif pending:
-                    # continuation row (wrapped description, no new date)
+                    # continuation row (wrapped description, no new date) — may
+                    # belong to the same page/table as the transaction it
+                    # continues, or (when a page break splits the description)
+                    # the next page's table instead.
                     extra = ""
                     if "desc" in col_map and col_map["desc"] < len(row) and row[col_map["desc"]]:
                         extra = str(row[col_map["desc"]]).strip()
@@ -187,8 +215,8 @@ def _parse_via_tables(pdf):
                         extra = " ".join(str(c) for c in row if c).strip()
                     if extra:
                         pending["note"] = (pending["note"] + " " + extra) if pending["note"] else extra
-            if pending:
-                transactions.append(pending)
+    if pending:
+        transactions.append(pending)
     return transactions
 
 
